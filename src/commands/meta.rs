@@ -29,7 +29,7 @@ fn stats(ctx: &mut Context, msg: &Message) -> CommandResult {
 //    let mojang_data = mojang_response.json().unwrap();
 //    let user_uuid = mojang_data["id"].as_str().unwrap();
 
-//    let mut skyblock_request = String::from("https://api.hypixel.net/Skyblock/profiles?key=23056a2e-5590-4a1f-881a-51452c7723b5&uuid=");
+//    let mut skyblock_request = String::from("https://api.hypixel.net/Skyblock/profiles?key=...&uuid=");
 //    skyblock_request.push_str(&user_uuid);
 
 //    let response = requests::get(skyblock_request).unwrap();
@@ -101,4 +101,3 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
     return lowest_prices;
 }
-// 23056a2e-5590-4a1f-881a-51452c7723b5
