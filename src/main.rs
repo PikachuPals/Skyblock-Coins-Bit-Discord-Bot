@@ -51,7 +51,7 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(multiply, stats, quit)]
+#[commands(multiply, cookie, stats, quit)]  
 struct General;
 
 fn main() {
