@@ -9,13 +9,15 @@ use requests::ToJson;
 
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
+use std::time::Instant;
 
 #[command]
-fn stats(ctx: &mut Context, msg: &Message) -> CommandResult {
+fn bits(ctx: &mut Context, msg: &Message) -> CommandResult {
 
     let hypixel_token = env::var("HYPIXEL_TOKEN")
         .expect("Expected hypixel token in the environment");
+
+    let start = Instant::now();
 
     let _ = msg.channel_id.say(&ctx.http, "Working...");
 
@@ -54,12 +56,28 @@ fn stats(ctx: &mut Context, msg: &Message) -> CommandResult {
         bits_item_vec.push(BitsItemPrices::new(item, bits_item_cost_vec[index], *price));
     }
 
-    for listing in bits_item_vec{
-        let output_message = format!("{} costs {} bits. Lowest BIN is {} where coins/bit is at {}.", listing.bits_item, listing.bits_cost, listing.lowest_cost, listing.coins_per_bit());
-        let _ = msg.channel_id.say(&ctx.http, output_message);
+    let cookie_output = format!("`Booster Cookie Price:` *{}*", buy_cookie_price);
+
+    let mut output_fields_vec = vec![];
+
+    for listing in bits_item_vec {
+        output_fields_vec.push((format!("{:.15}", listing.bits_item),
+                                format!("*BIN:* {}\n*$*/*b*: {}\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit()),
+                                true,));
     }
 
-    let _ = msg.channel_id.say(&ctx.http, "Finished");
+
+    let timed_search = format!("Completed in {:.2?}.", start.elapsed());
+
+    let _msg = msg.channel_id.send_message(&ctx.http, |m|{
+        m.content(timed_search);
+        m.embed(|e| {
+            e.title("");
+            e.description(cookie_output);
+            e.fields(output_fields_vec);
+            e });
+        m
+    });
 
     Ok(())
 }
