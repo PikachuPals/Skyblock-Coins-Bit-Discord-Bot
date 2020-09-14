@@ -4,6 +4,7 @@ use serenity::framework::standard::{
     CommandResult,
     macros::command,
 };
+use serenity::utils::Colour;
 
 use requests::ToJson;
 
@@ -45,9 +46,9 @@ fn bits(ctx: &mut Context, msg: &Message) -> CommandResult {
 
     let bits_items_lowest_prices = get_lowest_bin_values(auction_pages);
 
-    let bits_item_cost_vec = vec![2000, 500, 3000, 300, 8000, 1200, 4000, 1500, 2000];
-    let item_array: [String; 9] = ["God Potion".to_string(), "Kat Flower".to_string(), "Heat Core".to_string(), "Hyper Catalyst Upgrade".to_string(), "Ultimate Carrot Candy Upgrade".to_string(),
-    "Colossal Experience Bottle Upgrade".to_string(), "Jumbo Backpack Upgrade".to_string(), "Minion Storage X-pender".to_string(), "Hologram".to_string()];
+    let bits_item_cost_vec = vec![2000, 500, 3000, 300, 8000, 1200, 4000, 1500, 2000, 4000];
+    let item_array: [String; 10] = ["God Potion".to_string(), "Kat Flower".to_string(), "Heat Core".to_string(), "Hyper Catalyst Upgrade".to_string(), "Ultimate Carrot Candy Upgrade".to_string(),
+    "Colossal Experience Bottle Upgrade".to_string(), "Jumbo Backpack Upgrade".to_string(), "Minion Storage X-pender".to_string(), "Hologram".to_string(), "Enchanted Book".to_string()];
 
     let mut bits_item_vec = vec![];
 
@@ -56,13 +57,15 @@ fn bits(ctx: &mut Context, msg: &Message) -> CommandResult {
         bits_item_vec.push(BitsItemPrices::new(item, bits_item_cost_vec[index], *price));
     }
 
-    let cookie_output = format!("`Booster Cookie Price:` *{}*", buy_cookie_price);
+    let cookie_output = format!("*Booster Cookie Price:* `{}`\nItems are organised into highest coins per bit.\nﾠﾠ", buy_cookie_price);
 
     let mut output_fields_vec = vec![];
 
+    bits_item_vec.sort_by(|a, b| b.coins_per_bit().cmp(&a.coins_per_bit()));
+
     for listing in bits_item_vec {
         output_fields_vec.push((format!("{:.15}", listing.bits_item),
-                                format!("*BIN:* {}\n*$*/*b*: {}\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit()),
+                                format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit()),
                                 true,));
     }
 
@@ -74,6 +77,8 @@ fn bits(ctx: &mut Context, msg: &Message) -> CommandResult {
         m.embed(|e| {
             e.title("");
             e.description(cookie_output);
+            e.thumbnail("https://i.imgur.com/JNpxJ7I.png");
+            e.colour(Colour::FOOYOO);
             e.fields(output_fields_vec);
             e });
         m
@@ -101,8 +106,8 @@ impl BitsItemPrices{
 
 fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
-    let item_array: [String; 9] = ["God Potion".to_string(), "Kat Flower".to_string(), "Heat Core".to_string(), "Hyper Catalyst Upgrade".to_string(), "Ultimate Carrot Candy Upgrade".to_string(),
-    "Colossal Experience Bottle Upgrade".to_string(), "Jumbo Backpack Upgrade".to_string(), "Minion Storage X-pender".to_string(), "Hologram".to_string()];
+    let item_array: [String; 10] = ["God Potion".to_string(), "Kat Flower".to_string(), "Heat Core".to_string(), "Hyper Catalyst Upgrade".to_string(), "Ultimate Carrot Candy Upgrade".to_string(),
+    "Colossal Experience Bottle Upgrade".to_string(), "Jumbo Backpack Upgrade".to_string(), "Minion Storage X-pender".to_string(), "Hologram".to_string(), "Enchanted Book".to_string()];
 
     let mut lowest_prices: HashMap<String, i32> = HashMap::new();
 
@@ -119,15 +124,29 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
         let response = requests::get(page_auctions).unwrap();
         let data = response.json().unwrap();
 
+        let ebook = "Enchanted Book".to_string();
+        let expertise_enchant = "Expertise".to_string();
+
         for auc in data["auctions"].members(){
             for auc_item in item_array.iter() {
                 if auc["item_name"].as_str().unwrap() == auc_item && auc["bin"].as_bool() != None {
 
-                    let lowest_price_of_item = lowest_prices.get(auc_item).unwrap();
-                    let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                    if auc_item == &ebook && auc["item_lore"].as_str().unwrap().contains(&expertise_enchant) {
+                        let lowest_price_of_item = lowest_prices.get(auc_item).unwrap();
+                        let auc_item_price = auc["starting_bid"].as_i32().unwrap();
 
-                    if auc_item_price < *lowest_price_of_item {
-                        lowest_prices.insert(auc_item.to_string(), auc_item_price);
+                        if auc_item_price < *lowest_price_of_item {
+                            lowest_prices.insert(auc_item.to_string(), auc_item_price);
+                        }
+                    }
+
+                    else if auc_item != &ebook {
+                        let lowest_price_of_item = lowest_prices.get(auc_item).unwrap();
+                        let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+
+                        if auc_item_price < *lowest_price_of_item {
+                            lowest_prices.insert(auc_item.to_string(), auc_item_price);
+                        }
                     }
                 }
             }
