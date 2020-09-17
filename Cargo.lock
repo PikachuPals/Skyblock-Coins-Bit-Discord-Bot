@@ -396,6 +396,7 @@ name = "hello-rust"
 version = "0.1.0"
 dependencies = [
  "env_logger",
+ "json",
  "kankyo",
  "log 0.4.8",
  "requests",
