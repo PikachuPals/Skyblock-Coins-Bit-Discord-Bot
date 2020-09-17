@@ -12,6 +12,7 @@ kankyo = "0.3"
 log = "0.4"
 requests = "*"
 time = "*"
+json = "*"
 
 [dependencies.serenity]
 features = ["cache","framework","standard_framework","rustls_backend"]
