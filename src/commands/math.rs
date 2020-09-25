@@ -42,7 +42,9 @@ pub fn cookie(ctx: &mut Context, msg: &Message) -> CommandResult {
     let response = requests::get(skyblock_bazaar_cookie).unwrap();
     let data = response.json().unwrap();
 
-    let buy_cookie_price = &data["products"]["BOOSTER_COOKIE"]["sell_summary"][0]["pricePerUnit"];
+    let buy_cookie_price = &data["products"]["BOOSTER_COOKIE"]["sell_summary"][0]["pricePerUnit"].as_f32().unwrap();
+    let default_bits: f32 = 4800.0;
+    let default_coins_per_bit = (buy_cookie_price/ default_bits).abs();
 
     //    let mojang_response = requests::get("https://api.mojang.com/users/profiles/minecraft/PikachuPals").unwrap();
     //    let mojang_data = mojang_response.json().unwrap();
@@ -73,7 +75,7 @@ pub fn cookie(ctx: &mut Context, msg: &Message) -> CommandResult {
         bits_item_vec.push(BitsItemPrices::new(item, bits_item_cost_vec[index], *price));
     }
 
-    let cookie_output = format!("*Booster Cookie Price:* `{}`\nItems are organised into highest coins per bit.\nﾠﾠ", buy_cookie_price);
+    let cookie_output = format!("*Booster Cookie Price:* `{}`\n*Current $/b:* `{:.1}`\nItems are organised into highest coins per bit.\nﾠﾠ", buy_cookie_price, default_coins_per_bit);
 
     let mut output_fields_vec = vec![];
 
@@ -84,7 +86,6 @@ pub fn cookie(ctx: &mut Context, msg: &Message) -> CommandResult {
                                 format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit()),
                                 true,));
     }
-
 
     let timed_search = format!("Completed in {:.2?}.", start.elapsed());
 
