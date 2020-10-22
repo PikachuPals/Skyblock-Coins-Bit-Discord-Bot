@@ -142,9 +142,6 @@ for item in items.iter(){
 
   let _msg2 = msg.channel_id.send_message(&ctx.http, |m|{
       m.embed(|e| {
-          e.title("`Dark Auction BIN Prices 2`");
-          e.description("");
-          e.thumbnail("https://i.imgur.com/JNpxJ7I.png");
           e.colour(Colour::FOOYOO);
           e.fields(output_fields_vec2);
           e });
