@@ -51,11 +51,13 @@ pub fn da(ctx: &mut Context, msg: &Message) -> CommandResult {
 
   let auction_pages = data["totalPages"].as_i32().unwrap();
 
-  let categories: [String; 4] = ["Artifacts".to_string(), "Books".to_string(),"Pets".to_string(), "Travel Scrolls".to_string()];
-  let categories_count: [i32; 4] = [2, 5, 6, 1];
+  let categories: [String; 5] = ["Artifacts".to_string(), "Books".to_string(),"Book Bundles".to_string(), "Pets".to_string(), "Travel Scrolls".to_string()];
+  let categories_count: [i32; 5] = [3, 11, 2, 6, 1];
 
-  let items: [String; 14] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(),
+  let items: [String; 23] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
   "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
+  "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string(),
+  "Big Brain III".to_string(), "Vicious III".to_string(),
   "Parrot Legendary".to_string(), "Parrot Epic".to_string(), "Turtle Legendary".to_string(), "Turtle Epic".to_string(), "Jellyfish Legendary".to_string(), "Jellyfish Epic".to_string(),
   "Travel Scroll to Dark Auction".to_string()];
 
@@ -68,31 +70,60 @@ pub fn da(ctx: &mut Context, msg: &Message) -> CommandResult {
   }
 
   let mut output_fields_vec = vec![];
+  let mut output_fields_vec2 = vec![];
 
   let mut count = 0;
   let mut category = 0;
+  let mut input_count = 0;
 
-  output_fields_vec.push((format!("`{}`", categories[0]),
+  output_fields_vec.push((format!("ﾠﾠ\n__{}__", categories[0]),
                         "ﾠﾠ",
                         false,));
 
 for item in items.iter(){
 
-    if categories_count[category] > count {
-        count += 1;
+    if input_count < 24 {
+        if categories_count[category] > count {
+                count += 1;
+            }
+
+        else {
+
+            category += 1;
+            output_fields_vec.push((format!("ﾠﾠ\n__{}__", categories[category]),
+                                        "ﾠﾠ",
+                                        false,));
+            count = 1;
+            input_count += 1;
+        }
+
+        output_fields_vec.push((format!("{}", item),
+        item_prices.get(item).unwrap(),
+        true,));
+        input_count += 1;
     }
+
     else {
 
-        category += 1;
-        output_fields_vec.push((format!("ﾠﾠ\n`{}`", categories[category]),
-                                    "ﾠﾠ",
-                                    false,));
-        count = 1;
-    }
+        if categories_count[category] > count {
+                count += 1;
+            }
 
-    output_fields_vec.push((format!("{}", item),
-    item_prices.get(item).unwrap(),
-    true,));
+        else {
+
+            category += 1;
+            output_fields_vec2.push((format!("ﾠﾠ\n__{}__", categories[category]),
+                                        "ﾠﾠ",
+                                        false,));
+            count = 1;
+            input_count += 1;
+        }
+
+        output_fields_vec2.push((format!("{}", item),
+        item_prices.get(item).unwrap(),
+        true,));
+        input_count += 1;
+    }
 }
 
   let timed_search = format!("Completed in {:.2?}.", start.elapsed());
@@ -100,21 +131,36 @@ for item in items.iter(){
   let _msg = msg.channel_id.send_message(&ctx.http, |m|{
       m.content(timed_search);
       m.embed(|e| {
-          e.title("Dark Auction");
-          e.description("\nﾠﾠ");
+          e.title("`Dark Auction BIN Prices`");
+          e.description("");
           e.thumbnail("https://i.imgur.com/JNpxJ7I.png");
           e.colour(Colour::FOOYOO);
           e.fields(output_fields_vec);
           e });
       m
   });
+
+  let _msg2 = msg.channel_id.send_message(&ctx.http, |m|{
+      m.embed(|e| {
+          e.title("`Dark Auction BIN Prices 2`");
+          e.description("");
+          e.thumbnail("https://i.imgur.com/JNpxJ7I.png");
+          e.colour(Colour::FOOYOO);
+          e.fields(output_fields_vec2);
+          e });
+      m
+  });
+
+
   Ok(())
 }
 
 fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
-  let item_array: [String; 14] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(),
+  let item_array: [String; 23] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
   "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
+  "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string(),
+  "Big Brain III".to_string(), "Vicious III".to_string(),
   "Parrot Legendary".to_string(), "Parrot Epic".to_string(), "Turtle Legendary".to_string(), "Turtle Epic".to_string(), "Jellyfish Legendary".to_string(), "Jellyfish Epic".to_string(),
   "Travel Scroll to Dark Auction".to_string()];
 
@@ -185,7 +231,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   return lowest_prices;
 }
 
-fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[String; 14]>>, i: i32, e: i32){
+fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[String; 23]>>, i: i32, e: i32){
 
   let item_array = locked_item_array.read().unwrap();
 
@@ -198,7 +244,11 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
       let data = response.json().unwrap();
 
       let ebook = "Enchanted Book".to_string();
-      let enchants: [String; 5] = ["Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string()];
+      let enchants: [String; 11] = ["Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
+      "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string()];
+
+      let ebundle = "Enchanted Book Bundle".to_string();
+      let bundles: [String; 2] = ["Big Brain III".to_string(), "Vicious III".to_string()];
 
       for auc in data["auctions"].members(){
           for auc_item in item_array.iter() {
@@ -219,6 +269,16 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                       }
                   }
 
+                  else if auc["item_name"].as_str().unwrap() == &ebundle {
+                      for bundle in bundles.iter() {
+                          if auc["item_lore"].as_str().unwrap().contains(bundle){
+                              let index = item_array.iter().position(|x| x == bundle).unwrap();
+                              let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                              sender_vector[index].send(auc_item_price).unwrap();
+                          }
+                      }
+                  }
+
                   else if auc_item.contains(&"Epic".to_string()) || auc_item.contains(&"Legendary".to_string()) {
                       let mut pet = auc_item.split_whitespace();
                       if auc["item_name"].as_str().unwrap().contains(pet.next().unwrap()) && auc["item_lore"].as_str().unwrap().contains(&pet.next().unwrap().to_uppercase()){
@@ -227,6 +287,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                           sender_vector[index].send(auc_item_price).unwrap();
                       }
                   }
+
               }
           }
       }
