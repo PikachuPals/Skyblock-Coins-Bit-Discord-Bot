@@ -51,15 +51,15 @@ pub fn da(ctx: &mut Context, msg: &Message) -> CommandResult {
 
   let auction_pages = data["totalPages"].as_i32().unwrap();
 
-  let categories: [String; 5] = ["Artifacts".to_string(), "Books".to_string(),"Book Bundles".to_string(), "Pets".to_string(), "Travel Scrolls".to_string()];
-  let categories_count: [i32; 5] = [3, 11, 2, 6, 1];
+  let categories: [String; 5] = ["Artifacts".to_string(), "Books".to_string(),"Book Bundles".to_string(), "Pets".to_string(), "Misc".to_string()];
+  let categories_count: [i32; 5] = [3, 11, 2, 6, 2];
 
-  let items: [String; 23] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
+  let items: [String; 24] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
   "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
   "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string(),
   "Big Brain III".to_string(), "Vicious III".to_string(),
   "Parrot Legendary".to_string(), "Parrot Epic".to_string(), "Turtle Legendary".to_string(), "Turtle Epic".to_string(), "Jellyfish Legendary".to_string(), "Jellyfish Epic".to_string(),
-  "Travel Scroll to Dark Auction".to_string()];
+  "Travel Scroll to Dark Auction".to_string(), "Plasma Nucleus".to_string()];
 
   let dark_auction_lowest_prices = get_lowest_bin_values(auction_pages);
 
@@ -157,12 +157,12 @@ for item in items.iter(){
 
 fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
-  let item_array: [String; 23] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
+  let item_array: [String; 24] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
   "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
   "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string(),
   "Big Brain III".to_string(), "Vicious III".to_string(),
   "Parrot Legendary".to_string(), "Parrot Epic".to_string(), "Turtle Legendary".to_string(), "Turtle Epic".to_string(), "Jellyfish Legendary".to_string(), "Jellyfish Epic".to_string(),
-  "Travel Scroll to Dark Auction".to_string()];
+  "Travel Scroll to Dark Auction".to_string(), "Plasma Nucleus".to_string()];
 
   let locked_item_array = Arc::new(RwLock::new(item_array.clone()));
 
@@ -231,7 +231,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   return lowest_prices;
 }
 
-fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[String; 23]>>, i: i32, e: i32){
+fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[String; 24]>>, i: i32, e: i32){
 
   let item_array = locked_item_array.read().unwrap();
 
