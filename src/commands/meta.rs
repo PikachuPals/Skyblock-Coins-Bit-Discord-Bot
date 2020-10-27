@@ -1,7 +1,7 @@
 use serenity::prelude::*;
 use serenity::model::prelude::*;
 use serenity::framework::standard::{
-    CommandResult,
+    Args, CommandResult,
     macros::command,
 };
 use serenity::utils::Colour;
@@ -17,7 +17,18 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 #[command]
-fn bits(ctx: &mut Context, msg: &Message) -> CommandResult {
+fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+
+    let mut fame_rank = args.single::<usize>()?;
+
+    if fame_rank <= 0 {
+        fame_rank = 1;
+    }
+    else if fame_rank > 11 {
+        fame_rank = 11;
+    }
+
+    let fame_rank_array: [f32; 11] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.6, 1.8, 1.9, 2.0, 2.04, 2.08];
 
     let hypixel_token = env::var("HYPIXEL_TOKEN")
         .expect("Expected hypixel token in the environment");
@@ -31,7 +42,7 @@ fn bits(ctx: &mut Context, msg: &Message) -> CommandResult {
     let data = response.json().unwrap();
 
     let buy_cookie_price = &data["products"]["BOOSTER_COOKIE"]["sell_summary"][0]["pricePerUnit"].as_f32().unwrap();
-    let default_bits: f32 = 4800.0;
+    let default_bits: f32 = 4800.0 * fame_rank_array[fame_rank - 1];
     let default_coins_per_bit = (buy_cookie_price/ default_bits).abs();
 
 //    let mojang_response = requests::get("https://api.mojang.com/users/profiles/minecraft/PikachuPals").unwrap();
@@ -78,11 +89,12 @@ fn bits(ctx: &mut Context, msg: &Message) -> CommandResult {
 
 
     let timed_search = format!("Completed in {:.2?}.", start.elapsed());
+    let title = format!("Fame Rank: {}", fame_rank);
 
     let _msg = msg.channel_id.send_message(&ctx.http, |m|{
         m.content(timed_search);
         m.embed(|e| {
-            e.title("");
+            e.title(title);
             e.description(cookie_output);
             e.thumbnail("https://i.imgur.com/JNpxJ7I.png");
             e.colour(Colour::FOOYOO);
