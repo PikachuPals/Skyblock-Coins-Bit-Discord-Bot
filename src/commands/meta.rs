@@ -82,12 +82,12 @@ fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     bits_item_vec.sort_by(|a, b| b.coins_per_bit().cmp(&a.coins_per_bit()));
 
     for listing in bits_item_vec {
-        if listing.lowest_cost < 1010000 {
+        if listing.lowest_cost < 1000000 {
             output_fields_vec.push((format!("{:.15}", listing.bits_item),
                                     format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit()),
                                     true,));
         }
-        else if listing.lowest_cost < 1010000 && listing.lowest_cost > 1000000 {
+        else if listing.lowest_cost < 1010000 {
             output_fields_vec.push((format!("{:.15}", listing.bits_item),
                                     format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit_million_exact()),
                                     true,));
