@@ -82,9 +82,21 @@ fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     bits_item_vec.sort_by(|a, b| b.coins_per_bit().cmp(&a.coins_per_bit()));
 
     for listing in bits_item_vec {
-        output_fields_vec.push((format!("{:.15}", listing.bits_item),
-                                format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit()),
-                                true,));
+        if listing.lowest_cost < 1010000 {
+            output_fields_vec.push((format!("{:.15}", listing.bits_item),
+                                    format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit()),
+                                    true,));
+        }
+        else if listing.lowest_cost < 1010000 && listing.lowest_cost > 1000000 {
+            output_fields_vec.push((format!("{:.15}", listing.bits_item),
+                                    format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit_million_exact()),
+                                    true,));
+        }
+        else {
+            output_fields_vec.push((format!("{:.15}", listing.bits_item),
+                                    format!("BIN: *{}*\n$/b: *{}*\nﾠﾠ", listing.lowest_cost, listing.coins_per_bit_million()),
+                                    true,));
+        }
     }
 
 
@@ -99,6 +111,11 @@ fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
             e.thumbnail("https://i.imgur.com/JNpxJ7I.png");
             e.colour(Colour::FOOYOO);
             e.fields(output_fields_vec);
+            e.footer(|f| {
+                        f.text("$/b takes into account auction fees and taxes!");
+
+                        f
+                    });
             e });
         m
     });
@@ -119,7 +136,18 @@ impl BitsItemPrices{
     }
 
     fn coins_per_bit(&self) -> i32 {
-        (self.lowest_cost / self.bits_cost).abs()
+
+        ((self.lowest_cost as f32 - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+    }
+
+    fn coins_per_bit_million(&self) -> i32 {
+
+        ((self.lowest_cost as f32 - (self.lowest_cost as f32 * 0.01) - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+    }
+
+    fn coins_per_bit_million_exact(&self) -> i32 {
+
+        ((1000000 as f32 - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
     }
 }
 
