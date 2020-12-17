@@ -14,18 +14,24 @@ use std::{
     collections::HashSet,
     env,
     sync::Arc,
-    fs::File,
 };
 use serenity::{
+    async_trait,
     client::bridge::gateway::ShardManager,
     framework::{
         StandardFramework,
         standard::macros::group,
     },
+    http::Http,
     model::{event::ResumedEvent, gateway::Ready},
     prelude::*,
 };
-use log::{error, info};
+
+use tracing::{error, info};
+use tracing_subscriber::{
+    FmtSubscriber,
+    EnvFilter,
+};
 
 use commands::{
     math::*,
@@ -40,59 +46,80 @@ impl TypeMapKey for ShardManagerContainer {
 
 struct Handler;
 
+#[async_trait]
 impl EventHandler for Handler {
-    fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, _: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
     }
 
-    fn resume(&self, _: Context, _: ResumedEvent) {
+    async fn resume(&self, _: Context, _: ResumedEvent) {
         info!("Resumed");
     }
 }
 
 #[group]
-#[commands(multiply, da, bits, quit)]  
+#[commands(multiply, da, bits, quit)]
 struct General;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // This will load the environment variables located at `./.env`, relative to
     // the CWD. See `./.env.example` for an example on how to structure this.
-    let mut file = File::open(".env").expect("Failed to open");
-    kankyo::load_from_reader(&mut file, true).expect("Failed");
+    dotenv::dotenv().expect("Failed to load .env file");
 
     // Initialize the logger to use environment variables.
     //
     // In this case, a good default is setting the environment variable
     // `RUST_LOG` to debug`.
-    env_logger::init();
+    let subscriber = FmtSubscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to start the logger");
+
 
     let token = env::var("DISCORD_TOKEN")
         .expect("Expected a token in the environment");
 
-    let mut client = Client::new(&token, Handler).expect("Err creating client");
+    let http = Http::new_with_token(&token);
 
-    {
-        let mut data = client.data.write();
-        data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
-    }
-
-    let owners = match client.cache_and_http.http.get_current_application_info() {
+    // We will fetch your bot's owners and id
+    let (owners, _bot_id) = match http.get_current_application_info().await {
         Ok(info) => {
-            let mut set = HashSet::new();
-            set.insert(info.owner.id);
+            let mut owners = HashSet::new();
+            owners.insert(info.owner.id);
 
-            set
+            (owners, info.id)
         },
-        Err(why) => panic!("Couldn't get application info: {:?}", why),
+        Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
-    client.with_framework(StandardFramework::new()
+    // Create the framework
+    let framework = StandardFramework::new()
         .configure(|c| c
-            .owners(owners)
-            .prefix("pika "))
-        .group(&GENERAL_GROUP));
+                   .owners(owners)
+                   .prefix("pika "))
+        .group(&GENERAL_GROUP);
 
-    if let Err(why) = client.start() {
+    let mut client = Client::builder(&token)
+        .framework(framework)
+        .event_handler(Handler)
+        .await
+        .expect("Err creating client");
+
+    {
+        let mut data = client.data.write().await;
+        data.insert::<ShardManagerContainer>(client.shard_manager.clone());
+    }
+
+    let shard_manager = client.shard_manager.clone();
+
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.expect("Could not register ctrl+c handler");
+        shard_manager.lock().await.shutdown_all().await;
+    });
+
+    if let Err(why) = client.start().await {
         error!("Client error: {:?}", why);
     }
 }
