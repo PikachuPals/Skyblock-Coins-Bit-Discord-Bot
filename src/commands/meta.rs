@@ -17,7 +17,7 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 #[command]
-fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let mut fame_rank = args.single::<usize>()?;
 
@@ -35,7 +35,7 @@ fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let start = Instant::now();
 
-    let _ = msg.channel_id.say(&ctx.http, "Working...");
+    msg.channel_id.say(&ctx.http, "Working...").await?;
 
     let skyblock_bazaar_cookie = format!("https://api.hypixel.net/skyblock/bazaar?key={}", hypixel_token);
     let response = requests::get(skyblock_bazaar_cookie).unwrap();
@@ -103,7 +103,7 @@ fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let timed_search = format!("Completed in {:.2?}.", start.elapsed());
     let title = format!("Fame Rank: {}", fame_rank);
 
-    let _msg = msg.channel_id.send_message(&ctx.http, |m|{
+    msg.channel_id.send_message(&ctx.http, |m|{
         m.content(timed_search);
         m.embed(|e| {
             e.title(title);
@@ -118,7 +118,7 @@ fn bits(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
                     });
             e });
         m
-    });
+    }).await?;
 
     Ok(())
 }

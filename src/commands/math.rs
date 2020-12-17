@@ -17,23 +17,23 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 #[command]
-pub fn multiply(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
-    let one = args.single::<f64>().unwrap();
-    let two = args.single::<f64>().unwrap();
+pub async fn multiply(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let one = args.single::<f64>()?;
+    let two = args.single::<f64>()?;
 
     let product = one * two;
 
-    let _ = msg.channel_id.say(&ctx.http, product);
+    msg.channel_id.say(&ctx.http, product).await?;
 
     Ok(())
 }
 
 #[command]
-pub fn da(ctx: &mut Context, msg: &Message) -> CommandResult {
+pub async fn da(ctx: &Context, msg: &Message) -> CommandResult {
 
   let start = Instant::now();
 
-  let _ = msg.channel_id.say(&ctx.http, "Working...");
+  msg.channel_id.say(&ctx.http, "Working...").await?;
 
 //    let mojang_response = requests::get("https://api.mojang.com/users/profiles/minecraft/PikachuPals").unwrap();
 //    let mojang_data = mojang_response.json().unwrap();
@@ -128,7 +128,7 @@ for item in items.iter(){
 
   let timed_search = format!("Completed in {:.2?}.", start.elapsed());
 
-  let _msg = msg.channel_id.send_message(&ctx.http, |m|{
+  msg.channel_id.send_message(&ctx.http, |m|{
       m.content(timed_search);
       m.embed(|e| {
           e.title("`Dark Auction BIN Prices`");
@@ -138,15 +138,15 @@ for item in items.iter(){
           e.fields(output_fields_vec);
           e });
       m
-  });
+  }).await?;
 
-  let _msg2 = msg.channel_id.send_message(&ctx.http, |m|{
+  msg.channel_id.send_message(&ctx.http, |m|{
       m.embed(|e| {
           e.colour(Colour::FOOYOO);
           e.fields(output_fields_vec2);
           e });
       m
-  });
+  }).await?;
 
 
   Ok(())
