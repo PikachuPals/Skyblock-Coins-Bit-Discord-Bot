@@ -7,8 +7,6 @@ use serenity::framework::standard::{
 
 use serenity::utils::Colour;
 
-use requests::ToJson;
-
 use std::collections::HashMap;
 use std::time::Instant;
 use std::sync::mpsc;
@@ -46,13 +44,13 @@ pub async fn da(ctx: &Context, msg: &Message) -> CommandResult {
 //    let data = response.json().unwrap();
 
   let skyblock_auctions = String::from("https://api.hypixel.net/skyblock/auctions?page=0");
-  let response = requests::get(skyblock_auctions).unwrap();
-  let data = response.json().unwrap();
+  let response = reqwest::get(&skyblock_auctions).await?;
+  let data: serde_json::Value = response.json().await?;
 
-  let auction_pages = data["totalPages"].as_i32().unwrap();
+  let auction_pages = data["totalPages"].as_i64().unwrap();
 
   let categories: [String; 5] = ["Artifacts".to_string(), "Books".to_string(),"Book Bundles".to_string(), "Pets".to_string(), "Misc".to_string()];
-  let categories_count: [i32; 5] = [3, 11, 2, 6, 2];
+  let categories_count: [i64; 5] = [3, 11, 2, 6, 2];
 
   let items: [String; 24] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
   "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
@@ -152,7 +150,7 @@ for item in items.iter(){
   Ok(())
 }
 
-fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
+fn get_lowest_bin_values(auction_pages: i64) ->  HashMap<String, i64>{
 
   let item_array: [String; 24] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
   "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
@@ -163,13 +161,13 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
   let locked_item_array = Arc::new(RwLock::new(item_array.clone()));
 
-  let mut lowest_prices: HashMap<String, i32> = HashMap::new();
+  let mut lowest_prices: HashMap<String, i64> = HashMap::new();
 
   for item in item_array.iter(){
       lowest_prices.insert(item.to_string(), 999999999);
   }
 
-  let mut sender_vector: Vec<Sender<i32>> = vec![];
+  let mut sender_vector: Vec<Sender<i64>> = vec![];
   let mut receiver_vector = vec![];
 
   for _n in 0..item_array.len(){
@@ -180,10 +178,10 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
   let mut handles = vec![];
 
-  let mut threads_pages: Vec<i32> = vec![0];
-  let threads: i32 = 15;
-  let pages_per_thread: i32 = auction_pages / threads;
-  let rem_pages: i32 = auction_pages % threads;
+  let mut threads_pages: Vec<i64> = vec![0];
+  let threads: i64 = 15;
+  let pages_per_thread: i64 = auction_pages / threads;
+  let rem_pages: i64 = auction_pages % threads;
   for thread in 1..=threads{
       if thread != threads{
           threads_pages.push(thread * pages_per_thread);
@@ -194,7 +192,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   }
 
   for i in 0..threads_pages.len() - 1 {
-      let mut sender_vector_clone: Vec<Sender<i32>> = vec![];
+      let mut sender_vector_clone: Vec<Sender<i64>> = vec![];
       let locked_item_array_clone = locked_item_array.clone();
       let start_page = threads_pages[i].clone();
       let end_page = threads_pages[i + 1].clone();
@@ -228,7 +226,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   return lowest_prices;
 }
 
-fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[String; 24]>>, i: i32, e: i32){
+fn work_thread(sender_vector: Vec<Sender<i64>>, locked_item_array: Arc<RwLock<[String; 24]>>, i: i64, e: i64){
 
   let item_array = locked_item_array.read().unwrap();
 
@@ -237,8 +235,10 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
       let page_number = page.to_string();
       page_auctions.push_str(&page_number);
 
-      let response = requests::get(page_auctions).unwrap();
-      let data = response.json().unwrap();
+      let response = reqwest::blocking::get(&page_auctions).unwrap();
+      let data_two: serde_json::Value = response.json().unwrap();
+
+      let data = json::parse(&data_two.to_string()).unwrap();
 
       let ebook = "Enchanted Book".to_string();
       let enchants: [String; 11] = ["Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
@@ -247,12 +247,12 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
       let ebundle = "Enchanted Book Bundle".to_string();
       let bundles: [String; 2] = ["Big Brain III".to_string(), "Vicious III".to_string()];
 
-      for auc in data["auctions"].members(){
+      for auc in data["auctions"].members() {
           for auc_item in item_array.iter() {
               if auc["bin"].as_bool() != None{
                   if auc["item_name"].as_str().unwrap() == auc_item && auc["bin"].as_bool() != None {
                       let index = item_array.iter().position(|x| x == auc_item).unwrap();
-                      let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                      let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                       sender_vector[index].send(auc_item_price).unwrap();
                   }
 
@@ -260,7 +260,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                       for enchant in enchants.iter() {
                           if auc["item_lore"].as_str().unwrap().contains(enchant){
                               let index = item_array.iter().position(|x| x == enchant).unwrap();
-                              let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                              let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                               sender_vector[index].send(auc_item_price).unwrap();
                           }
                       }
@@ -270,7 +270,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                       for bundle in bundles.iter() {
                           if auc["item_lore"].as_str().unwrap().contains(bundle){
                               let index = item_array.iter().position(|x| x == bundle).unwrap();
-                              let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                              let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                               sender_vector[index].send(auc_item_price).unwrap();
                           }
                       }
@@ -280,11 +280,10 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                       let mut pet = auc_item.split_whitespace();
                       if auc["item_name"].as_str().unwrap().contains(pet.next().unwrap()) && auc["item_lore"].as_str().unwrap().contains(&pet.next().unwrap().to_uppercase()){
                           let index = item_array.iter().position(|x| x == auc_item).unwrap();
-                          let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                          let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                           sender_vector[index].send(auc_item_price).unwrap();
                       }
                   }
-
               }
           }
       }
