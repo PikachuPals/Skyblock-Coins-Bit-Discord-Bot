@@ -6,8 +6,6 @@ use serenity::framework::standard::{
 };
 use serenity::utils::Colour;
 
-use requests::ToJson;
-
 use std::collections::HashMap;
 use std::env;
 use std::time::Instant;
@@ -28,7 +26,7 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         fame_rank = 11;
     }
 
-    let fame_rank_array: [f32; 11] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.6, 1.8, 1.9, 2.0, 2.04, 2.08];
+    let fame_rank_array: [f64; 11] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.6, 1.8, 1.9, 2.0, 2.04, 2.08];
 
     let hypixel_token = env::var("HYPIXEL_TOKEN")
         .expect("Expected hypixel token in the environment");
@@ -38,11 +36,11 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
     msg.channel_id.say(&ctx.http, "Working...").await?;
 
     let skyblock_bazaar_cookie = format!("https://api.hypixel.net/skyblock/bazaar?key={}", hypixel_token);
-    let response = requests::get(skyblock_bazaar_cookie).unwrap();
-    let data = response.json().unwrap();
+    let response = reqwest::get(&skyblock_bazaar_cookie).await?;
+    let data: serde_json::Value = response.json().await?;
 
-    let buy_cookie_price = &data["products"]["BOOSTER_COOKIE"]["sell_summary"][0]["pricePerUnit"].as_f32().unwrap();
-    let default_bits: f32 = 4800.0 * fame_rank_array[fame_rank - 1];
+    let buy_cookie_price = &data["products"]["BOOSTER_COOKIE"]["sell_summary"][0]["pricePerUnit"].as_f64().unwrap();
+    let default_bits: f64 = 4800.0 * fame_rank_array[fame_rank - 1];
     let default_coins_per_bit = (buy_cookie_price/ default_bits).abs();
 
 //    let mojang_response = requests::get("https://api.mojang.com/users/profiles/minecraft/PikachuPals").unwrap();
@@ -56,10 +54,10 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 //    let data = response.json().unwrap();
 
     let skyblock_auctions = String::from("https://api.hypixel.net/skyblock/auctions?page=0");
-    let response = requests::get(skyblock_auctions).unwrap();
-    let data = response.json().unwrap();
+    let response = reqwest::get(&skyblock_auctions).await?;
+    let data: serde_json::Value = response.json().await?;
 
-    let auction_pages = data["totalPages"].as_i32().unwrap();
+    let auction_pages = data["totalPages"].as_i64().unwrap();
 
     let bits_items_lowest_prices = get_lowest_bin_values(auction_pages);
 
@@ -126,32 +124,32 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 #[derive(Hash, Eq, PartialEq, Debug)]
 struct BitsItemPrices{
     bits_item: String,
-    bits_cost: i32,
-    lowest_cost: i32,
+    bits_cost: i64,
+    lowest_cost: i64,
 }
 
 impl BitsItemPrices{
-    fn new(bits_item: &str, bits_cost: i32, lowest_cost: i32) -> BitsItemPrices{
+    fn new(bits_item: &str, bits_cost: i64, lowest_cost: i64) -> BitsItemPrices{
         BitsItemPrices {bits_item: bits_item.to_string(), bits_cost: bits_cost, lowest_cost: lowest_cost}
     }
 
-    fn coins_per_bit(&self) -> i32 {
+    fn coins_per_bit(&self) -> i64 {
 
-        ((self.lowest_cost as f32 - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+        ((self.lowest_cost as f64 - (self.lowest_cost as f64 * 0.01)) / self.bits_cost as f64).abs() as i64
     }
 
-    fn coins_per_bit_million(&self) -> i32 {
+    fn coins_per_bit_million(&self) -> i64 {
 
-        ((self.lowest_cost as f32 - (self.lowest_cost as f32 * 0.01) - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+        ((self.lowest_cost as f64 - (self.lowest_cost as f64 * 0.01) - (self.lowest_cost as f64 * 0.01)) / self.bits_cost as f64).abs() as i64
     }
 
-    fn coins_per_bit_million_exact(&self) -> i32 {
+    fn coins_per_bit_million_exact(&self) -> i64 {
 
-        ((1000000 as f32 - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+        ((1000000 as f64 - (self.lowest_cost as f64 * 0.01)) / self.bits_cost as f64).abs() as i64
     }
 }
 
-fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
+fn get_lowest_bin_values(auction_pages: i64) ->  HashMap<String, i64>{
 
     let item_array: [String; 14] = ["God Potion".to_string(), "Kat Flower".to_string(), "Heat Core".to_string(), "Hyper Catalyst Upgrade".to_string(), "Ultimate Carrot Candy Upgrade".to_string(),
     "Colossal Experience Bottle Upgrade".to_string(), "Jumbo Backpack Upgrade".to_string(), "Minion Storage X-pender".to_string(), "Hologram".to_string(), "Expertise".to_string(), "Accessory Enrichment Swapper".to_string(),
@@ -159,13 +157,13 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
     let locked_item_array = Arc::new(RwLock::new(item_array.clone()));
 
-    let mut lowest_prices: HashMap<String, i32> = HashMap::new();
+    let mut lowest_prices: HashMap<String, i64> = HashMap::new();
 
     for item in item_array.iter(){
         lowest_prices.insert(item.to_string(), 999999999);
     }
 
-    let mut sender_vector: Vec<Sender<i32>> = vec![];
+    let mut sender_vector: Vec<Sender<i64>> = vec![];
     let mut receiver_vector = vec![];
 
     for _n in 0..item_array.len(){
@@ -176,10 +174,10 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
     let mut handles = vec![];
 
-    let mut threads_pages: Vec<i32> = vec![0];
-    let threads: i32 = 15;
-    let pages_per_thread: i32 = auction_pages / threads;
-    let rem_pages: i32 = auction_pages % threads;
+    let mut threads_pages: Vec<i64> = vec![0];
+    let threads: i64 = 15;
+    let pages_per_thread: i64 = auction_pages / threads;
+    let rem_pages: i64 = auction_pages % threads;
     for thread in 1..=threads{
         if thread != threads{
             threads_pages.push(thread * pages_per_thread);
@@ -190,7 +188,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
     }
 
     for i in 0..threads_pages.len() - 1 {
-        let mut sender_vector_clone: Vec<Sender<i32>> = vec![];
+        let mut sender_vector_clone: Vec<Sender<i64>> = vec![];
         let locked_item_array_clone = locked_item_array.clone();
         let start_page = threads_pages[i].clone();
         let end_page = threads_pages[i + 1].clone();
@@ -224,7 +222,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
     return lowest_prices;
 }
 
-fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[String; 14]>>, i: i32, e: i32){
+fn work_thread(sender_vector: Vec<Sender<i64>>, locked_item_array: Arc<RwLock<[String; 14]>>, i: i64, e: i64){
 
     let item_array = locked_item_array.read().unwrap();
 
@@ -233,8 +231,10 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
         let page_number = page.to_string();
         page_auctions.push_str(&page_number);
 
-        let response = requests::get(page_auctions).unwrap();
-        let data = response.json().unwrap();
+        let response = reqwest::blocking::get(&page_auctions).unwrap();
+        let data_two: serde_json::Value = response.json().unwrap();
+
+        let data = json::parse(&data_two.to_string()).unwrap();
 
         let ebook = "Enchanted Book".to_string();
 
@@ -247,7 +247,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                     if auc["item_name"].as_str().unwrap() == auc_item {
 
                         let index = item_array.iter().position(|x| x == auc_item).unwrap();
-                        let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                        let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                         sender_vector[index].send(auc_item_price).unwrap();
 
                     }
@@ -257,7 +257,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                             if auc["item_lore"].as_str().unwrap().contains(enchant){
 
                                 let index = item_array.iter().position(|x| x == enchant).unwrap();
-                                let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                                let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                                 sender_vector[index].send(auc_item_price).unwrap();
 
                             }
