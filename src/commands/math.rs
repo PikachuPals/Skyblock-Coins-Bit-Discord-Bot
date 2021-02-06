@@ -244,6 +244,9 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
       let enchants: [String; 11] = ["Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
       "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string()];
 
+      let unwanted_enchants: [String; 3] = ["Fire".to_string(), "Projectile".to_string(), "Blast".to_string()];
+      let mut fake_enchant = false;
+
       let ebundle = "Enchanted Book Bundle".to_string();
       let bundles: [String; 2] = ["Big Brain III".to_string(), "Vicious III".to_string()];
 
@@ -258,10 +261,28 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
 
                   else if auc["item_name"].as_str().unwrap() == &ebook {
                       for enchant in enchants.iter() {
+
                           if auc["item_lore"].as_str().unwrap().contains(enchant){
-                              let index = item_array.iter().position(|x| x == enchant).unwrap();
-                              let auc_item_price = auc["starting_bid"].as_i32().unwrap();
-                              sender_vector[index].send(auc_item_price).unwrap();
+
+                              if auc["item_lore"].as_str().unwrap().contains(&"Protection".to_string()){
+                                  fake_enchant = false;
+                                  for unwanted_enchant in unwanted_enchants.iter(){
+                                      if auc["item_lore"].as_str().unwrap().contains(unwanted_enchant) {
+                                          fake_enchant = true;
+                                      }
+                                  }
+                                  if !fake_enchant{
+                                      let index = item_array.iter().position(|x| x == enchant).unwrap();
+                                      let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                                      sender_vector[index].send(auc_item_price).unwrap();
+                                  }
+                              }
+
+                              else{
+                                  let index = item_array.iter().position(|x| x == enchant).unwrap();
+                                  let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                                  sender_vector[index].send(auc_item_price).unwrap();
+                              }
                           }
                       }
                   }
