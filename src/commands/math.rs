@@ -14,7 +14,6 @@ use std::time::Instant;
 use std::sync::mpsc;
 use std::thread;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, RwLock};
 
 #[command]
 pub async fn multiply(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
@@ -27,6 +26,16 @@ pub async fn multiply(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
 
     Ok(())
 }
+
+const ITEMS: &[&str; 24] = &["Ender Artifact", "Wither Artifact", "Hegemony Artifact",
+"Sharpness VI", "Giant Killer VI", "Power VI", "Growth VI", "Protection VI",
+"Sharpness VII", "Giant Killer VII", "Power VII", "Growth VII", "Protection VII", "Counter-Strike V",
+"Big Brain III", "Vicious III",
+"Parrot Legendary", "Parrot Epic", "Turtle Legendary", "Turtle Epic", "Jellyfish Legendary", "Jellyfish Epic",
+"Travel Scroll to Dark Auction", "Plasma Nucleus"];
+
+const CATEGORIES: &[&str; 5] = &["Artifacts", "Books","Book Bundles", "Pets", "Misc"];
+const CATEGORIES_COUNT: [i32; 5] = [3, 11, 2, 6, 2];
 
 #[command]
 pub async fn da(ctx: &Context, msg: &Message) -> CommandResult {
@@ -51,46 +60,36 @@ pub async fn da(ctx: &Context, msg: &Message) -> CommandResult {
 
   let auction_pages = data["totalPages"].as_i32().unwrap();
 
-  let categories: [String; 5] = ["Artifacts".to_string(), "Books".to_string(),"Book Bundles".to_string(), "Pets".to_string(), "Misc".to_string()];
-  let categories_count: [i32; 5] = [3, 11, 2, 6, 2];
-
-  let items: [String; 24] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
-  "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
-  "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string(),
-  "Big Brain III".to_string(), "Vicious III".to_string(),
-  "Parrot Legendary".to_string(), "Parrot Epic".to_string(), "Turtle Legendary".to_string(), "Turtle Epic".to_string(), "Jellyfish Legendary".to_string(), "Jellyfish Epic".to_string(),
-  "Travel Scroll to Dark Auction".to_string(), "Plasma Nucleus".to_string()];
-
   let dark_auction_lowest_prices = get_lowest_bin_values(auction_pages);
 
   let mut item_prices: HashMap<String, String> = HashMap::new();
 
-  for item in items.iter(){
-      item_prices.insert(item.to_string() ,format!("$: {}", *dark_auction_lowest_prices.get(item).unwrap()));
+  for item in ITEMS.iter(){
+      item_prices.insert(item.to_string() ,format!("$: {}", *dark_auction_lowest_prices.get(&item.to_string()).unwrap()));
   }
 
-  let mut output_fields_vec = vec![];
-  let mut output_fields_vec2 = vec![];
+  let mut output_fields_vec = Vec::with_capacity(32);
+  let mut output_fields_vec2 = Vec::with_capacity(32);
 
   let mut count = 0;
   let mut category = 0;
   let mut input_count = 0;
 
-  output_fields_vec.push((format!("ﾠﾠ\n__{}__", categories[0]),
+  output_fields_vec.push((format!("ﾠﾠ\n__{}__", CATEGORIES[0]),
                         "ﾠﾠ",
                         false,));
 
-for item in items.iter(){
+for item in ITEMS.iter(){
 
     if input_count < 24 {
-        if categories_count[category] > count {
+        if CATEGORIES_COUNT[category] > count {
                 count += 1;
             }
 
         else {
 
             category += 1;
-            output_fields_vec.push((format!("ﾠﾠ\n__{}__", categories[category]),
+            output_fields_vec.push((format!("ﾠﾠ\n__{}__", CATEGORIES[category]),
                                         "ﾠﾠ",
                                         false,));
             count = 1;
@@ -98,21 +97,21 @@ for item in items.iter(){
         }
 
         output_fields_vec.push((format!("{}", item),
-        item_prices.get(item).unwrap(),
+        item_prices.get(&item.to_string()).unwrap(),
         true,));
         input_count += 1;
     }
 
     else {
 
-        if categories_count[category] > count {
+        if CATEGORIES_COUNT[category] > count {
                 count += 1;
             }
 
         else {
 
             category += 1;
-            output_fields_vec2.push((format!("ﾠﾠ\n__{}__", categories[category]),
+            output_fields_vec2.push((format!("ﾠﾠ\n__{}__", CATEGORIES[category]),
                                         "ﾠﾠ",
                                         false,));
             count = 1;
@@ -120,7 +119,7 @@ for item in items.iter(){
         }
 
         output_fields_vec2.push((format!("{}", item),
-        item_prices.get(item).unwrap(),
+        item_prices.get(&item.to_string()).unwrap(),
         true,));
         input_count += 1;
     }
@@ -154,25 +153,16 @@ for item in items.iter(){
 
 fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
-  let item_array: [String; 24] = ["Ender Artifact".to_string(), "Wither Artifact".to_string(), "Hegemony Artifact".to_string(),
-  "Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
-  "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string(),
-  "Big Brain III".to_string(), "Vicious III".to_string(),
-  "Parrot Legendary".to_string(), "Parrot Epic".to_string(), "Turtle Legendary".to_string(), "Turtle Epic".to_string(), "Jellyfish Legendary".to_string(), "Jellyfish Epic".to_string(),
-  "Travel Scroll to Dark Auction".to_string(), "Plasma Nucleus".to_string()];
-
-  let locked_item_array = Arc::new(RwLock::new(item_array.clone()));
-
   let mut lowest_prices: HashMap<String, i32> = HashMap::new();
 
-  for item in item_array.iter(){
+  for item in ITEMS.iter(){
       lowest_prices.insert(item.to_string(), 999999999);
   }
 
-  let mut sender_vector: Vec<Sender<i32>> = vec![];
-  let mut receiver_vector = vec![];
+  let mut sender_vector: Vec<Sender<i32>> = Vec::with_capacity(ITEMS.len());
+  let mut receiver_vector = Vec::with_capacity(ITEMS.len());
 
-  for _n in 0..item_array.len(){
+  for _n in 0..ITEMS.len(){
       let (tx, rx) = mpsc::channel();
       sender_vector.push(tx);
       receiver_vector.push(rx);
@@ -181,7 +171,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   let mut handles = vec![];
 
   let mut threads_pages: Vec<i32> = vec![0];
-  let threads: i32 = 15;
+  let threads: i32 = 8;
   let pages_per_thread: i32 = auction_pages / threads;
   let rem_pages: i32 = auction_pages % threads;
   for thread in 1..=threads{
@@ -194,15 +184,14 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   }
 
   for i in 0..threads_pages.len() - 1 {
-      let mut sender_vector_clone: Vec<Sender<i32>> = vec![];
-      let locked_item_array_clone = locked_item_array.clone();
+      let mut sender_vector_clone: Vec<Sender<i32>> = Vec::with_capacity(ITEMS.len());
       let start_page = threads_pages[i].clone();
       let end_page = threads_pages[i + 1].clone();
       for tx in &sender_vector{
           let tx_clone = tx.clone();
           sender_vector_clone.push(tx_clone);
       }
-      let handle = thread::spawn(move || work_thread(sender_vector_clone, locked_item_array_clone,
+      let handle = thread::spawn(move || work_thread(sender_vector_clone,
            start_page, end_page));
       handles.push(handle);
   }
@@ -215,11 +204,11 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
       drop(sender);
   }
 
-  for item in item_array.iter() {
-      let index = item_array.iter().position(|x| x == item).unwrap();
+  for item in ITEMS.iter() {
+      let index = ITEMS.iter().position(|x| x == item).unwrap();
 
       for price in &receiver_vector[index]{
-          if price < *lowest_prices.get(item).unwrap() {
+          if price < *lowest_prices.get(&item.to_string()).unwrap() {
               lowest_prices.insert(item.to_string(), price);
           }
       }
@@ -228,9 +217,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   return lowest_prices;
 }
 
-fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[String; 24]>>, i: i32, e: i32){
-
-  let item_array = locked_item_array.read().unwrap();
+fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
 
   for page in i..e{
       let mut page_auctions = String::from(" https://api.hypixel.net/skyblock/auctions?page=");
@@ -251,10 +238,10 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
       let bundles: [String; 2] = ["Big Brain III".to_string(), "Vicious III".to_string()];
 
       for auc in data["auctions"].members(){
-          for auc_item in item_array.iter() {
+          for auc_item in ITEMS.iter() {
               if auc["bin"].as_bool() != None{
-                  if auc["item_name"].as_str().unwrap() == auc_item && auc["bin"].as_bool() != None {
-                      let index = item_array.iter().position(|x| x == auc_item).unwrap();
+                  if auc["item_name"].as_str().unwrap() == *auc_item && auc["bin"].as_bool() != None {
+                      let index = ITEMS.iter().position(|x| x == auc_item).unwrap();
                       let auc_item_price = auc["starting_bid"].as_i32().unwrap();
                       sender_vector[index].send(auc_item_price).unwrap();
                   }
@@ -272,14 +259,14 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                                       }
                                   }
                                   if !fake_enchant{
-                                      let index = item_array.iter().position(|x| x == enchant).unwrap();
+                                      let index = ITEMS.iter().position(|x| x == enchant).unwrap();
                                       let auc_item_price = auc["starting_bid"].as_i32().unwrap();
                                       sender_vector[index].send(auc_item_price).unwrap();
                                   }
                               }
 
                               else{
-                                  let index = item_array.iter().position(|x| x == enchant).unwrap();
+                                  let index = ITEMS.iter().position(|x| x == enchant).unwrap();
                                   let auc_item_price = auc["starting_bid"].as_i32().unwrap();
                                   sender_vector[index].send(auc_item_price).unwrap();
                               }
@@ -290,7 +277,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                   else if auc["item_name"].as_str().unwrap() == &ebundle {
                       for bundle in bundles.iter() {
                           if auc["item_lore"].as_str().unwrap().contains(bundle){
-                              let index = item_array.iter().position(|x| x == bundle).unwrap();
+                              let index = ITEMS.iter().position(|x| x == bundle).unwrap();
                               let auc_item_price = auc["starting_bid"].as_i32().unwrap();
                               sender_vector[index].send(auc_item_price).unwrap();
                           }
@@ -300,7 +287,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, locked_item_array: Arc<RwLock<[S
                   else if auc_item.contains(&"Epic".to_string()) || auc_item.contains(&"Legendary".to_string()) {
                       let mut pet = auc_item.split_whitespace();
                       if auc["item_name"].as_str().unwrap().contains(pet.next().unwrap()) && auc["item_lore"].as_str().unwrap().contains(&pet.next().unwrap().to_uppercase()){
-                          let index = item_array.iter().position(|x| x == auc_item).unwrap();
+                          let index = ITEMS.iter().position(|x| x == auc_item).unwrap();
                           let auc_item_price = auc["starting_bid"].as_i32().unwrap();
                           sender_vector[index].send(auc_item_price).unwrap();
                       }
