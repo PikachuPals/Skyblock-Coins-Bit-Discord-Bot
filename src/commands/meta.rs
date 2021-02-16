@@ -15,14 +15,14 @@ use std::sync::mpsc;
 use std::thread;
 use std::sync::mpsc::Sender;
 
-const BITS_ITEM_COST_VEC: [i32; 14] = [2000, 500, 3000, 300, 8000, 1200, 4000, 1500, 2000, 4000, 200, 12000, 15000, 4000];
-const ITEM_ARRAY: &[&str; 14] = &["God Potion", "Kat Flower", "Heat Core", "Hyper Catalyst Upgrade", "Ultimate Carrot Candy Upgrade",
+const BITS_ITEM_COST_VEC: [i32; 18] = [2000, 500, 3000, 300, 8000, 1200, 4000, 1500, 2000, 4000, 200, 12000, 15000, 4000, 4000, 21000, 5000, 1350];
+const ITEM_ARRAY: &[&str; 18] = &["God Potion", "Kat Flower", "Heat Core", "Hyper Catalyst Upgrade", "Ultimate Carrot Candy Upgrade",
 "Colossal Experience Bottle Upgrade", "Jumbo Backpack Upgrade", "Minion Storage X-pender", "Hologram", "Expertise", "Accessory Enrichment Swapper",
-"Builder's Wand", "Bits Talisman", "Compact"];
+"Builder's Wand", "Bits Talisman", "Compact", "Cultivating", "Autopet Rules 2-Pack", "Block Zapper", "Kismet Feather"];
 
 const EBOOK: &str = "Enchanted Book";
 
-const ENCHANTS: &[&str; 2] = &["Expertise", "Compact"];
+const ENCHANTS: &[&str; 3] = &["Expertise", "Compact", "Cultivating"];
 
 #[command]
 pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
