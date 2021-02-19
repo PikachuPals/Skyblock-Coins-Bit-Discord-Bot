@@ -232,7 +232,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
       "Sharpness VII".to_string(), "Giant Killer VII".to_string(), "Power VII".to_string(), "Growth VII".to_string(), "Protection VII".to_string(), "Counter-Strike V".to_string()];
 
       let unwanted_enchants: [String; 3] = ["Fire".to_string(), "Projectile".to_string(), "Blast".to_string()];
-      let mut fake_enchant = false;
+      let mut fake_enchant;
 
       let ebundle = "Enchanted Book Bundle".to_string();
       let bundles: [String; 2] = ["Big Brain III".to_string(), "Vicious III".to_string()];
