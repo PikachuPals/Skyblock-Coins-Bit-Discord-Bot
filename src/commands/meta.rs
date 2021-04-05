@@ -6,7 +6,7 @@ use serenity::framework::standard::{
 };
 use serenity::utils::Colour;
 
-use requests::ToJson;
+use ureq;
 
 use std::collections::HashMap;
 use std::env;
@@ -15,7 +15,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::sync::mpsc::Sender;
 
-const BITS_ITEM_COST_VEC: [i32; 18] = [2000, 500, 3000, 300, 8000, 1200, 4000, 1500, 2000, 4000, 200, 12000, 15000, 4000, 4000, 21000, 5000, 1350];
+const BITS_ITEM_COST_VEC: [i64; 18] = [1500, 500, 3000, 300, 8000, 1200, 4000, 1500, 2000, 4000, 200, 12000, 15000, 4000, 4000, 21000, 5000, 1350];
 const ITEM_ARRAY: &[&str; 18] = &["God Potion", "Kat Flower", "Heat Core", "Hyper Catalyst Upgrade", "Ultimate Carrot Candy Upgrade",
 "Colossal Experience Bottle Upgrade", "Jumbo Backpack Upgrade", "Minion Storage X-pender", "Hologram", "Expertise", "Accessory Enrichment Swapper",
 "Builder's Wand", "Bits Talisman", "Compact", "Cultivating", "Autopet Rules 2-Pack", "Block Zapper", "Kismet Feather"];
@@ -36,7 +36,7 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
         fame_rank = 11;
     }
 
-    let fame_rank_array: [f32; 11] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.6, 1.8, 1.9, 2.0, 2.04, 2.08];
+    let fame_rank_array: [f64; 11] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.6, 1.8, 1.9, 2.0, 2.04, 2.08];
 
     let hypixel_token = env::var("HYPIXEL_TOKEN")
         .expect("Expected hypixel token in the environment");
@@ -46,11 +46,10 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
     msg.channel_id.say(&ctx.http, "Working...").await?;
 
     let skyblock_bazaar_cookie = format!("https://api.hypixel.net/skyblock/bazaar?key={}", hypixel_token);
-    let response = requests::get(skyblock_bazaar_cookie).unwrap();
-    let data = response.json().unwrap();
+    let data : serde_json::Value = ureq::get(&skyblock_bazaar_cookie).call()?.into_json()?;
 
-    let buy_cookie_price = &data["products"]["BOOSTER_COOKIE"]["sell_summary"][0]["pricePerUnit"].as_f32().unwrap();
-    let default_bits: f32 = 4800.0 * fame_rank_array[fame_rank - 1];
+    let buy_cookie_price = &data["products"]["BOOSTER_COOKIE"]["sell_summary"][0]["pricePerUnit"].as_f64().unwrap();
+    let default_bits: f64 = 4800.0 * fame_rank_array[fame_rank - 1];
     let default_coins_per_bit = (buy_cookie_price/ default_bits).abs();
 
 //    let mojang_response = requests::get("https://api.mojang.com/users/profiles/minecraft/PikachuPals").unwrap();
@@ -64,10 +63,9 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 //    let data = response.json().unwrap();
 
     let skyblock_auctions = String::from("https://api.hypixel.net/skyblock/auctions?page=0");
-    let response = requests::get(skyblock_auctions).unwrap();
-    let data = response.json().unwrap();
+    let data : serde_json::Value = ureq::get(&skyblock_auctions).call()?.into_json()?;
 
-    let auction_pages = data["totalPages"].as_i32().unwrap();
+    let auction_pages = data["totalPages"].as_i64().unwrap();
 
     let bits_items_lowest_prices = get_lowest_bin_values(auction_pages);
 
@@ -129,40 +127,40 @@ pub async fn bits(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 #[derive(Hash, Eq, PartialEq, Debug)]
 struct BitsItemPrices{
     bits_item: String,
-    bits_cost: i32,
-    lowest_cost: i32,
+    bits_cost: i64,
+    lowest_cost: i64,
 }
 
 impl BitsItemPrices{
-    fn new(bits_item: &str, bits_cost: i32, lowest_cost: i32) -> BitsItemPrices{
+    fn new(bits_item: &str, bits_cost: i64, lowest_cost: i64) -> BitsItemPrices{
         BitsItemPrices {bits_item: bits_item.to_string(), bits_cost: bits_cost, lowest_cost: lowest_cost}
     }
 
-    fn coins_per_bit(&self) -> i32 {
+    fn coins_per_bit(&self) -> i64 {
 
-        ((self.lowest_cost as f32 - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+        ((self.lowest_cost as f64 - (self.lowest_cost as f64 * 0.01)) / self.bits_cost as f64).abs() as i64
     }
 
-    fn coins_per_bit_million(&self) -> i32 {
+    fn coins_per_bit_million(&self) -> i64 {
 
-        ((self.lowest_cost as f32 - (self.lowest_cost as f32 * 0.01) - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+        ((self.lowest_cost as f64 - (self.lowest_cost as f64 * 0.01) - (self.lowest_cost as f64 * 0.01)) / self.bits_cost as f64).abs() as i64
     }
 
-    fn coins_per_bit_million_exact(&self) -> i32 {
+    fn coins_per_bit_million_exact(&self) -> i64 {
 
-        ((1000000 as f32 - (self.lowest_cost as f32 * 0.01)) / self.bits_cost as f32).abs() as i32
+        ((1000000 as f64 - (self.lowest_cost as f64 * 0.01)) / self.bits_cost as f64).abs() as i64
     }
 }
 
-fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
+fn get_lowest_bin_values(auction_pages: i64) ->  HashMap<String, i64>{
 
-    let mut lowest_prices: HashMap<String, i32> = HashMap::new();
+    let mut lowest_prices: HashMap<String, i64> = HashMap::new();
 
     for item in ITEM_ARRAY.iter(){
         lowest_prices.insert(item.to_string(), 999999999);
     }
 
-    let mut sender_vector: Vec<Sender<i32>> = Vec::with_capacity(ITEM_ARRAY.len());
+    let mut sender_vector: Vec<Sender<i64>> = Vec::with_capacity(ITEM_ARRAY.len());
     let mut receiver_vector = Vec::with_capacity(ITEM_ARRAY.len());
 
     for _n in 0..ITEM_ARRAY.len(){
@@ -173,10 +171,10 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
     let mut handles = vec![];
 
-    let mut threads_pages: Vec<i32> = vec![0];
-    let threads: i32 = 8;
-    let pages_per_thread: i32 = auction_pages / threads;
-    let rem_pages: i32 = auction_pages % threads;
+    let mut threads_pages: Vec<i64> = vec![0];
+    let threads: i64 = 8;
+    let pages_per_thread: i64 = auction_pages / threads;
+    let rem_pages: i64 = auction_pages % threads;
     for thread in 1..=threads{
         if thread != threads{
             threads_pages.push(thread * pages_per_thread);
@@ -187,7 +185,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
     }
 
     for i in 0..threads_pages.len() - 1 {
-        let mut sender_vector_clone: Vec<Sender<i32>> = Vec::with_capacity(ITEM_ARRAY.len());
+        let mut sender_vector_clone: Vec<Sender<i64>> = Vec::with_capacity(ITEM_ARRAY.len());
         let start_page = threads_pages[i].clone();
         let end_page = threads_pages[i + 1].clone();
         for tx in &sender_vector{
@@ -220,24 +218,23 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
     return lowest_prices;
 }
 
-fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
+fn work_thread(sender_vector: Vec<Sender<i64>>, i: i64, e: i64){
 
     for page in i..e{
         let mut page_auctions = String::from(" https://api.hypixel.net/skyblock/auctions?page=");
         let page_number = page.to_string();
         page_auctions.push_str(&page_number);
 
-        let response = requests::get(page_auctions).unwrap();
-        let data = response.json().unwrap();
+        let data : serde_json::Value = ureq::get(&page_auctions).call().unwrap().into_json().unwrap();
 
-        for auc in data["auctions"].members(){
+        for auc in data["auctions"].as_array().unwrap(){
             for auc_item in ITEM_ARRAY.iter() {
                 if auc["bin"].as_bool() != None{
 
                     if &auc["item_name"].as_str().unwrap() == auc_item {
 
                         let index = ITEM_ARRAY.iter().position(|x| x == auc_item).unwrap();
-                        let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                        let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                         sender_vector[index].send(auc_item_price).unwrap();
 
                     }
@@ -247,7 +244,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
                             if auc["item_lore"].as_str().unwrap().contains(enchant){
 
                                 let index = ITEM_ARRAY.iter().position(|x| x == enchant).unwrap();
-                                let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                                let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                                 sender_vector[index].send(auc_item_price).unwrap();
 
                             }

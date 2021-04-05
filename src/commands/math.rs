@@ -7,7 +7,7 @@ use serenity::framework::standard::{
 
 use serenity::utils::Colour;
 
-use requests::ToJson;
+use ureq;
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -35,7 +35,7 @@ const ITEMS: &[&str; 24] = &["Ender Artifact", "Wither Artifact", "Hegemony Arti
 "Travel Scroll to Dark Auction", "Plasma Nucleus"];
 
 const CATEGORIES: &[&str; 5] = &["Artifacts", "Books","Book Bundles", "Pets", "Misc"];
-const CATEGORIES_COUNT: [i32; 5] = [3, 11, 2, 6, 2];
+const CATEGORIES_COUNT: [i64; 5] = [3, 11, 2, 6, 2];
 
 #[command]
 pub async fn da(ctx: &Context, msg: &Message) -> CommandResult {
@@ -55,10 +55,9 @@ pub async fn da(ctx: &Context, msg: &Message) -> CommandResult {
 //    let data = response.json().unwrap();
 
   let skyblock_auctions = String::from("https://api.hypixel.net/skyblock/auctions?page=0");
-  let response = requests::get(skyblock_auctions).unwrap();
-  let data = response.json().unwrap();
+  let data : serde_json::Value = ureq::get(&skyblock_auctions).call()?.into_json()?;
 
-  let auction_pages = data["totalPages"].as_i32().unwrap();
+  let auction_pages = data["totalPages"].as_i64().unwrap();
 
   let dark_auction_lowest_prices = get_lowest_bin_values(auction_pages);
 
@@ -151,15 +150,15 @@ for item in ITEMS.iter(){
   Ok(())
 }
 
-fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
+fn get_lowest_bin_values(auction_pages: i64) ->  HashMap<String, i64>{
 
-  let mut lowest_prices: HashMap<String, i32> = HashMap::new();
+  let mut lowest_prices: HashMap<String, i64> = HashMap::new();
 
   for item in ITEMS.iter(){
       lowest_prices.insert(item.to_string(), 999999999);
   }
 
-  let mut sender_vector: Vec<Sender<i32>> = Vec::with_capacity(ITEMS.len());
+  let mut sender_vector: Vec<Sender<i64>> = Vec::with_capacity(ITEMS.len());
   let mut receiver_vector = Vec::with_capacity(ITEMS.len());
 
   for _n in 0..ITEMS.len(){
@@ -170,10 +169,10 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
 
   let mut handles = vec![];
 
-  let mut threads_pages: Vec<i32> = vec![0];
-  let threads: i32 = 8;
-  let pages_per_thread: i32 = auction_pages / threads;
-  let rem_pages: i32 = auction_pages % threads;
+  let mut threads_pages: Vec<i64> = vec![0];
+  let threads: i64 = 8;
+  let pages_per_thread: i64 = auction_pages / threads;
+  let rem_pages: i64 = auction_pages % threads;
   for thread in 1..=threads{
       if thread != threads{
           threads_pages.push(thread * pages_per_thread);
@@ -184,7 +183,7 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   }
 
   for i in 0..threads_pages.len() - 1 {
-      let mut sender_vector_clone: Vec<Sender<i32>> = Vec::with_capacity(ITEMS.len());
+      let mut sender_vector_clone: Vec<Sender<i64>> = Vec::with_capacity(ITEMS.len());
       let start_page = threads_pages[i].clone();
       let end_page = threads_pages[i + 1].clone();
       for tx in &sender_vector{
@@ -217,15 +216,14 @@ fn get_lowest_bin_values(auction_pages: i32) ->  HashMap<String, i32>{
   return lowest_prices;
 }
 
-fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
+fn work_thread(sender_vector: Vec<Sender<i64>>, i: i64, e: i64){
 
   for page in i..e{
       let mut page_auctions = String::from(" https://api.hypixel.net/skyblock/auctions?page=");
       let page_number = page.to_string();
       page_auctions.push_str(&page_number);
 
-      let response = requests::get(page_auctions).unwrap();
-      let data = response.json().unwrap();
+      let data : serde_json::Value = ureq::get(&page_auctions).call().unwrap().into_json().unwrap();
 
       let ebook = "Enchanted Book".to_string();
       let enchants: [String; 11] = ["Sharpness VI".to_string(), "Giant Killer VI".to_string(), "Power VI".to_string(), "Growth VI".to_string(), "Protection VI".to_string(),
@@ -237,12 +235,12 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
       let ebundle = "Enchanted Book Bundle".to_string();
       let bundles: [String; 2] = ["Big Brain III".to_string(), "Vicious III".to_string()];
 
-      for auc in data["auctions"].members(){
+      for auc in data["auctions"].as_array().unwrap(){
           for auc_item in ITEMS.iter() {
               if auc["bin"].as_bool() != None{
                   if auc["item_name"].as_str().unwrap() == *auc_item && auc["bin"].as_bool() != None {
                       let index = ITEMS.iter().position(|x| x == auc_item).unwrap();
-                      let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                      let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                       sender_vector[index].send(auc_item_price).unwrap();
                   }
 
@@ -260,14 +258,14 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
                                   }
                                   if !fake_enchant{
                                       let index = ITEMS.iter().position(|x| x == enchant).unwrap();
-                                      let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                                      let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                                       sender_vector[index].send(auc_item_price).unwrap();
                                   }
                               }
 
                               else{
                                   let index = ITEMS.iter().position(|x| x == enchant).unwrap();
-                                  let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                                  let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                                   sender_vector[index].send(auc_item_price).unwrap();
                               }
                           }
@@ -278,7 +276,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
                       for bundle in bundles.iter() {
                           if auc["item_lore"].as_str().unwrap().contains(bundle){
                               let index = ITEMS.iter().position(|x| x == bundle).unwrap();
-                              let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                              let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                               sender_vector[index].send(auc_item_price).unwrap();
                           }
                       }
@@ -288,7 +286,7 @@ fn work_thread(sender_vector: Vec<Sender<i32>>, i: i32, e: i32){
                       let mut pet = auc_item.split_whitespace();
                       if auc["item_name"].as_str().unwrap().contains(pet.next().unwrap()) && auc["item_lore"].as_str().unwrap().contains(&pet.next().unwrap().to_uppercase()){
                           let index = ITEMS.iter().position(|x| x == auc_item).unwrap();
-                          let auc_item_price = auc["starting_bid"].as_i32().unwrap();
+                          let auc_item_price = auc["starting_bid"].as_i64().unwrap();
                           sender_vector[index].send(auc_item_price).unwrap();
                       }
                   }
